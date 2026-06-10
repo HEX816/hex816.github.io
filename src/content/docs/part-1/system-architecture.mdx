@@ -79,16 +79,23 @@ The I/O page is a single 256-byte region in bank 0 mapped to SYS-side hardware r
 
 | Range | Block |
 | --- | --- |
-| $CF00–$CF0F | System and interrupt status |
-| $CF10–$CF11 | UART data and status |
-| $CF28–$CF3F | FAT32 / SD card |
-| $CF30–$CF34 | Gamepad state |
-| $CF40–$CF47 | USB mouse |
+| $CF00 | System status |
+| $CF03–$CF04 | 60 Hz timer (tick counter) |
+| $CF05–$CF06 | USB keyboard data and status |
+| $CF09–$CF0A | CPU reset control, status LED |
+| $CF10–$CF11 | Console UART data and status |
+| $CF20–$CF39 | FAT32 / SD card — command, 128-byte data stream, file registers |
+| $CF3A–$CF3B | Removable media (USB MSC) status and control |
 | $CF50–$CF57 | Real-time clock (BCD) |
 | $CF58–$CF67 | ESP32-C3 networking |
-| $CF68–$CF6C | PHI2 cycle counter |
 | $CF70–$CF72 | BRK debug handshake |
+| $CF7F | Boot-staging flag |
+| $CFA0–$CFBF | SND register window (PSG voices, PCM channels) |
 | $CFE0 | PDI stream port (to PRISM) |
+
+A few registers in this page are still settling — notably the SD data/status
+path and the SND register window. The authoritative per-register breakdown is
+Appendix&nbsp;A: Memory Map.
 
 :::note[Note · history]
 Earlier in the project the I/O base lived at `$E000`. The migration to `$CF00` happened in revision 2.2 to make room for a single contiguous BIOS ROM at `$D000–$FFFF` rather than the previous split layout. Older code referring to `$E0xx` addresses needs the bottom byte shifted: `$E010` → `$CF10`, `$E028` → `$CF28`, and so on.
@@ -106,7 +113,7 @@ The 65C816 exposes two interrupt lines — the maskable `IRQ` and the non-maskab
 | NMI | $00:FFEA |
 | IRQ | $00:FFEE |
 
-All peripheral interrupts (RTC tick, USB mouse, gamepad edges, SD card ready, ESP32-C3 incoming packet, …) are aggregated by SYS and presented to the CPU as a single `IRQB` assertion on GP30. Software reads the IRQ status registers at `$CF00`–`$CF0F` to discover which source fired and to clear the latch.
+All peripheral interrupts (RTC tick, USB keyboard input, SD card ready, ESP32-C3 incoming packet, …) are aggregated by SYS and presented to the CPU as a single `IRQB` assertion on GP30. The interrupt handler queries SYS over the I/O page to discover which source fired and to clear the latch.
 
 The `BRK` instruction is reserved for the debugger. When the CPU executes `BRK`, it pushes the program counter and status, then jumps through the vector at `$00:FFE6`. The handler stores the full register set into the scratch area at `$0080–$008F`, writes magic byte `0xCC` to `$CF70`, and spins waiting for SYS to write `0x01` to `$CF71`. The debug adapter on the host PC sees the magic byte, fetches the saved registers, optionally modifies them, then writes the resume value — and the CPU continues. See Chapter&nbsp;15 for the full debug protocol.
 
