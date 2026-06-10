@@ -1,0 +1,250 @@
+/* ============================================================
+ *  The HEX-816 Book — Starlight theme overrides
+ *  Ports the original docs.css house style (amber-on-dark,
+ *  Fraunces / Newsreader / JetBrains Mono) onto Starlight's
+ *  own components. Structural layout (sidebar, on-this-page
+ *  rail, scrollspy, heading anchors) is provided by Starlight.
+ * ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=JetBrains+Mono:wght@300..800&display=swap");
+
+/* ---- Brand palette (from original :root) ---- */
+:root {
+  --hx-bg:          #0b0a08;
+  --hx-bg-warm:     #14110d;
+  --hx-surface:     #1a1612;
+  --hx-surface-2:   #221d17;
+  --hx-line:        #2e2820;
+  --hx-line-bright: #463d30;
+  --hx-ink:         #f4ede0;
+  --hx-ink-dim:     #c9bfae;
+  --hx-ink-quiet:   #8a8273;
+  --hx-ink-faint:   #4f4a3f;
+  --hx-amber:       #ff9a2a;
+  --hx-amber-glow:  #ffb866;
+  --hx-amber-deep:  #cc6a00;
+  --hx-crimson:     #e8472a;
+  --hx-moss:        #9aa86b;
+
+  --hx-font-display: "Fraunces", "Times New Roman", serif;
+  --hx-font-body:    "Newsreader", Georgia, serif;
+  --hx-font-mono:    "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ---- Map the palette onto Starlight's dark theme tokens ---- */
+:root[data-theme="dark"],
+:root {
+  --sl-color-accent:        var(--hx-amber);
+  --sl-color-accent-low:    var(--hx-amber-deep);
+  --sl-color-accent-high:   var(--hx-amber-glow);
+
+  --sl-color-white:         var(--hx-ink);
+  --sl-color-gray-1:        var(--hx-ink);
+  --sl-color-gray-2:        var(--hx-ink-dim);
+  --sl-color-gray-3:        var(--hx-ink-quiet);
+  --sl-color-gray-4:        var(--hx-ink-faint);
+  --sl-color-gray-5:        var(--hx-line-bright);
+  --sl-color-gray-6:        var(--hx-line);
+
+  --sl-color-black:         var(--hx-bg);
+  --sl-color-bg:            var(--hx-bg);
+  --sl-color-bg-nav:        var(--hx-bg-warm);
+  --sl-color-bg-sidebar:    var(--hx-bg-warm);
+  --sl-color-bg-inline-code: var(--hx-surface);
+  --sl-color-hairline:      var(--hx-line);
+  --sl-color-hairline-light: var(--hx-line);
+  --sl-color-hairline-shade: var(--hx-line);
+
+  --sl-color-text:          var(--hx-ink-dim);
+  --sl-color-text-accent:   var(--hx-amber);
+
+  /* Fonts */
+  --sl-font:                var(--hx-font-body);
+  --sl-font-mono:           var(--hx-font-mono);
+}
+
+::selection { background: var(--hx-amber); color: var(--hx-bg); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--hx-bg); }
+::-webkit-scrollbar-thumb { background: var(--hx-line-bright); }
+::-webkit-scrollbar-thumb:hover { background: var(--hx-amber-deep); }
+
+/* ============================================================
+ *  Sidebar — uppercase mono group labels, amber accents
+ * ============================================================ */
+.sidebar-content summary,
+.sidebar-content .group-label span {
+  font-family: var(--hx-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hx-amber);
+}
+.sidebar-content a {
+  font-family: var(--hx-font-body);
+  color: var(--hx-ink-dim);
+}
+.sidebar-content a:hover { color: var(--hx-ink); }
+.sidebar-content a[aria-current="page"] {
+  color: var(--hx-amber);
+  background: transparent;
+  border-inline-start: 2px solid var(--hx-amber);
+  font-weight: 400;
+}
+/* "soon" badge → faint mono, matching the old .stub::after */
+.sidebar-content .sl-badge {
+  font-family: var(--hx-font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: lowercase;
+  background: transparent;
+  border-color: var(--hx-line);
+  color: var(--hx-ink-faint);
+}
+
+/* ============================================================
+ *  Content typography
+ * ============================================================ */
+.sl-markdown-content {
+  font-family: var(--hx-font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--hx-ink-dim);
+}
+
+.content-panel h1,
+.sl-markdown-content h1 {
+  font-family: var(--hx-font-display);
+  font-variation-settings: "opsz" 110, "SOFT" 30;
+  font-weight: 360;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  color: var(--hx-ink);
+}
+
+.sl-markdown-content h2 {
+  font-family: var(--hx-font-display);
+  font-variation-settings: "opsz" 64;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--hx-ink);
+  padding-top: 1.3rem;
+  border-top: 1px solid var(--hx-line);
+  margin-top: 3.2rem;
+}
+
+.sl-markdown-content h3 {
+  font-family: var(--hx-font-display);
+  font-variation-settings: "opsz" 48;
+  font-weight: 450;
+  letter-spacing: -0.005em;
+  color: var(--hx-ink);
+}
+
+.sl-markdown-content h4 {
+  font-family: var(--hx-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hx-amber);
+}
+
+.sl-markdown-content p,
+.sl-markdown-content li { color: var(--hx-ink-dim); }
+.sl-markdown-content p { max-width: 68ch; }
+.sl-markdown-content strong { color: var(--hx-ink); font-weight: 500; }
+
+.sl-markdown-content a {
+  color: var(--hx-amber);
+  text-decoration: underline;
+  text-decoration-color: var(--hx-amber-deep);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.sl-markdown-content a:hover { color: var(--hx-amber-glow); }
+
+.sl-markdown-content ul li::marker { color: var(--hx-amber-deep); }
+.sl-markdown-content ol li::marker { color: var(--hx-amber-deep); }
+
+.sl-markdown-content blockquote {
+  border-inline-start: 2px solid var(--hx-amber-deep);
+  color: var(--hx-ink-dim);
+  font-style: italic;
+}
+
+.sl-markdown-content hr { border-top: 1px solid var(--hx-line); }
+
+/* ---- Inline + block code ---- */
+.sl-markdown-content code {
+  font-family: var(--hx-font-mono);
+  background: var(--hx-surface);
+  color: var(--hx-amber);
+  border-radius: 2px;
+}
+.sl-markdown-content pre {
+  font-family: var(--hx-font-mono);
+  background: var(--hx-bg-warm);
+  border: 1px solid var(--hx-line);
+  border-inline-start: 3px solid var(--hx-amber-deep);
+}
+.sl-markdown-content pre code { background: transparent; color: var(--hx-ink-dim); }
+
+/* ---- Tables — mono, amber headers, amber first column ---- */
+.sl-markdown-content table {
+  font-family: var(--hx-font-mono);
+  font-size: 0.84rem;
+  border: 1px solid var(--hx-line);
+  background: var(--hx-bg-warm);
+  border-collapse: collapse;
+}
+.sl-markdown-content th {
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hx-amber);
+  background: var(--hx-surface);
+  border-bottom: 1px solid var(--hx-line-bright);
+}
+.sl-markdown-content td {
+  color: var(--hx-ink-dim);
+  border-bottom: 1px dotted var(--hx-line);
+}
+.sl-markdown-content td:first-child {
+  color: var(--hx-amber);
+  white-space: nowrap;
+}
+
+/* ============================================================
+ *  Asides / callouts — match the old .note box
+ * ============================================================ */
+.starlight-aside {
+  background: var(--hx-bg-warm);
+  border-inline-start: 3px solid var(--hx-amber-deep);
+  padding: 1rem 1.2rem;
+}
+.starlight-aside--note { border-inline-start-color: var(--hx-amber-deep); }
+.starlight-aside--tip { border-inline-start-color: var(--hx-moss); }
+.starlight-aside--caution { border-inline-start-color: var(--hx-amber); }
+.starlight-aside--danger { border-inline-start-color: var(--hx-crimson); }
+.starlight-aside__title {
+  font-family: var(--hx-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hx-amber);
+}
+
+/* ---- On-this-page rail ---- */
+.right-sidebar a { font-family: var(--hx-font-body); }
+starlight-toc a[aria-current="true"] { color: var(--hx-amber); }
+
+/* ---- Pager (prev/next) ---- */
+.pagination-links a {
+  border: 1px solid var(--hx-line);
+  background: var(--hx-surface);
+}
+.pagination-links a:hover {
+  border-color: var(--hx-amber-deep);
+  background: var(--hx-surface-2);
+}

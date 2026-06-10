@@ -1,0 +1,18 @@
+{
+  "name": "hex816-book",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "The HEX-816 Book — documentation for the HEX-816 homebrew 65C816 computer.",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.39.3",
+    "astro": "^6.4.4",
+    "sharp": "^0.33.5"
+  }
+}

@@ -1,0 +1,63 @@
+---
+title: The HEX-816 Book
+description: The HEX-816 Book is the authoritative reference for the HEX-816 homebrew 65C816 computer. Hardware in Part 1, programming in Part 2, plus appendices.
+tableOfContents:
+  minHeadingLevel: 2
+  maxHeadingLevel: 3
+---
+
+The HEX-816 is a homebrew 65C816 single-board computer with three RP2354B coprocessors, 2 MB of SRAM, and a full software stack of its own. This is the book: a single source of truth for the hardware and for the software it runs.
+
+## How this book is organised
+
+The book is in two parts plus appendices. You can read it cover to cover, or jump in at any chapter; everything is cross-linked.
+
+### Part 1 — The Computer
+
+The hardware. The 65C816 CPU and its bus circuitry, the three RP2354B coprocessors and their division of labour, the SRAM organisation, the PRISM video subsystem driving HDMI directly through HSTX, the PSG/PCM audio path, USB and networking, the real-time clock, and the firmware that ties it all together.
+
+By the end of Part 1 you should know what every important signal on the board does, why each chip is on the BOM, and where each engineering trade-off lies.
+
+### Part 2 — Programming
+
+How to write software for the HEX-816. The chapters walk from a `HELLO.COM` in 65C816 assembly through PRISM tile-mapped graphics, PSG and PCM sound, ESP32-C3 networking, FAT32 file I/O, and on into **HEX/OS** internals.
+
+Each chapter has runnable examples. The toolchain is [llvm-mos](https://llvm-mos.org/) for C and **HEX-Asm** for assembly; both ship with the SDK. Examples build on a host PC (Windows, Linux, or macOS) and run either on the [emulator](https://github.com/hex816) or on real hardware.
+
+### Appendices
+
+Reference material. The full memory map, the project glossary, a 6502-to-65C816 migration guide for readers coming from the 6502 / 65C02, a comparison against classic 8-bits (Apple IIgs, SNES, C64, X16), a one-page cheat sheet, and the file-format specs for `.COM` and `.816` executables.
+
+## Who this is for
+
+- **Retro-computing builders** who want to know what's inside a working 65C816 board in 2026.
+- **6502 / 65C02 / 65C816 programmers** who want a target board to write code for.
+- **Beginners** curious about low-level computing, who like a single coherent system small enough to fit in their head.
+
+The book assumes you can read C-family syntax and that you know what bits, bytes, and hexadecimal are. It does not assume any prior 65C816 experience — Chapter&nbsp;8 starts from zero with a section called "the smallest possible program."
+
+## A note on scope
+
+This is real hardware, designed and assembled by a small group of retro enthusiasts. The board has quirks; the firmware has quirks; the OS has quirks. The book names them honestly.
+
+Where a chip choice was a trade-off, the trade-off is described. Where a behaviour is a workaround for a bug in Rev&nbsp;2.1, that is described too — including which board revision is expected to fix it. There is no marketing in this book.
+
+:::note
+The HEX-816 is still in active hardware bring-up at the time this preface was written. Most of Part 1 reflects the design intent of Rev&nbsp;2.1 and the firmware as frozen at v2.1; a few sections will be updated against measurements once the first boards return from JLCPCB.
+:::
+
+## Conventions used in the book
+
+Three typographic conventions to know about:
+
+- Addresses, opcodes, and signal names are set in monospace, e.g. `$CF00`, `SEP #$20`, `PHI2`.
+- Hardware **chip names** and **language names** are bolded on first mention in each chapter.
+- Boxed callouts (like the one above) flag a quirk, a gotcha, or a forward reference to a later chapter.
+
+Memory addresses are written with a leading `$` in the 65xx tradition: `$0000`–`$FFFFFF` for the full 24-bit address space, `$E000`-style for bank-0 short addresses, and `$00:CF00` when the bank needs to be explicit.
+
+---
+
+<p style="text-align: center; font-family: var(--hx-font-mono); font-size: 0.78rem; color: var(--hx-ink-faint); letter-spacing: 0.15em;">┄┄┄┄┄  ◆  ┄┄┄┄┄</p>
+
+<p style="text-align: center; max-width: 60ch; margin-inline: auto; font-style: italic; color: var(--hx-ink-dim);">With that out of the way, let's open the case.</p>

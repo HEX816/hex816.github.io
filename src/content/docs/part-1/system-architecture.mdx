@@ -1,0 +1,134 @@
+---
+title: "Chapter 2 · System architecture"
+description: The HEX-816 is built around a 12 MHz W65C816S and three RP2354B coprocessors (SYS, VID, SND). This chapter covers the CPU bus, the memory map, interrupts, and the clock tree.
+sidebar:
+  label: 02 · System architecture
+---
+
+The HEX-816 is built around the **W65C816S** from Western Design Center, surrounded by three **RP2354B** microcontrollers — **SYS**, **VID**, and **SND** — each handling one half-decade of latency that no 1985-era support chip would have managed. This chapter is the wiring diagram: what every chip does, what every signal does, and where every memory address goes.
+
+## The CPU: W65C816S at 12 MHz
+
+The W65C816S is a 16-bit successor to the 6502. WDC introduced it in 1985 and still produces it today — the parts on the HEX-816 are current production. Internally it has a 16-bit accumulator (`A`), two 16-bit index registers (`X` and `Y`), a 16-bit stack pointer (`S`), and a 16-bit direct-page register (`D`) that can relocate "zero-page" addressing anywhere in bank 0. Two bank registers — **program bank** (`PBR`) and **data bank** (`DBR`) — extend the address space to 24 bits and 16 MB.
+
+The HEX-816 firmware switches the CPU into native mode at reset and never goes back. Emulation mode is technically still in the instruction set (`XCE` swaps the two), but it is not used or supported. All toolchain, all OS code, and all example programs in this book assume native mode throughout.
+
+:::note[Note · bring-up]
+On Rev 2.1 the CPU is currently running at **3.125 MHz** for bring-up purposes, not the 12 MHz design target. A reset-vector race during the first millisecond of power-on currently requires a software boot-dance to get past; the workaround works, but it limits how aggressively `PHI2` can be ramped during the same window. Rev 3.0 will route the CPU's `BE` pin to a SYS GPIO and eliminate the race entirely. Until then, code in this book that references "12 MHz" is correct for the target design, with the bring-up caveat applying for the first batch of boards.
+:::
+
+## The three coprocessors
+
+The 65C816 cannot, on its own, drive HDMI, host a USB stack, mix PCM audio in real time, or address 2 MB of SRAM through its multiplexed bus. Rather than building support chips out of CPLDs, the HEX-816 uses three RP2354B microcontrollers in QFN-80 packages. Each runs its own firmware. They are referred to throughout the book by short names:
+
+- **SYS** (U_SYS) — the bus master. Generates `PHI2` from a PIO state machine, samples the CPU bus, runs the chip-select decoder hooks, and hosts USB through the FE1.1S hub. SYS is the only chip that talks to the CPU directly.
+- **VID** (U_VID) — the **PRISM** video subsystem. Reads a PDI command stream from SYS over QSPI, runs the command list on its own Core&nbsp;1, and shifts TMDS bits directly out through the RP2350's `HSTX` peripheral. No HDMI bridge chip.
+- **SND** (U_SND) — sound. Drives a PCM5102A I²S DAC at 48 kHz, 16-bit, with 16 PSG voices and four PCM channels mixed in software. Also exposes the development console: two CDC ACM ports over USB, one for DAP debugging and one for the HEX/OS serial console.
+
+The three chips communicate through a small mesh of buses: shared SPI from SYS to VID and SND for control, a QSPI tap from SYS to VID for PRISM commands, an I²S link from SND to VID so HDMI audio works without extra wiring, and individual SWD ports on each for in-system programming. The full pinout lives in Chapter&nbsp;6.
+
+## CPU bus circuitry
+
+The 65C816 multiplexes its address and data lines to fit a 24-bit address space on the same physical pin count as a 6502. During the LOW half of each `PHI2` cycle, the data pins `D0–D7` carry the high address bits `A16–A23`; during the HIGH half they carry actual read or write data.
+
+Two discrete chips handle the demultiplexing:
+
+- **U4 — SN74AHC573**, a 5 ns octal D-latch. It captures `A16–A23` on the falling edge of `PHI2` and holds them stable for the rest of the cycle.
+- **U18 — SN74AHC138**, a 7 ns 3-to-8 line decoder. With `A20–A22` as inputs and `PHI2` as the enable, it produces eight chip-select outputs `Y0`–`Y7`. `Y0` drives `CS_SRAM` to the AS6C8008 chips. `Y7` is named `Y7_FB` and loops back into SYS on `GP33` so firmware can detect when the CPU is in the high I/O region.
+
+SYS observes the CPU bus through a dedicated PIO program on the second core. The full GPIO map is given in the table in Chapter&nbsp;6; the architectural shape is that GP0–GP15 are the 16 low address bits straight from the CPU, GP16–GP23 are the data bus, and GP24 outputs `PHI2`. `RWB`, `VDA`, and `VPA` arrive on GP25–GP27 so SYS can distinguish program fetches from data accesses from idle cycles.
+
+### PHI2 generation
+
+There is no crystal oscillator dedicated to `PHI2`. SYS generates the clock from a PIO state machine on GP24 with two configurable phases. The default firmware programs it for 12 MHz with a 50 % duty cycle. Because `PHI2` is software-generated, the clock is trivially overclockable or underclockable in firmware without changing components — practical for bring-up but not yet hands-off-stable above 12 MHz.
+
+### Wait states
+
+Above 6 MHz the AS6C8008 SRAM's data-setup time relative to the rising edge of `PHI2` (the `tBAS` parameter, "data setup before address strobe") starts to bite. The firmware inserts **one wait state per memory access above 6 MHz** by stretching the LOW half of `PHI2` on the SYS PIO. At the 12 MHz design target this halves effective memory throughput compared to a fully synchronous 12 MHz bus, but it keeps the SRAM happy without raising voltages or changing chips.
+
+## Memory organisation
+
+Main memory is **2 MB of asynchronous SRAM** in two AS6C8008 packages, each 1 MB. The high address bit `A20` selects between them: `A20=0` drives `/CE` on U7 and `A20=1` drives `/CE` on U8. From the CPU's point of view the result is one contiguous flat block of memory occupying banks `$00`–`$1F`.
+
+Inside bank 0, two regions are reserved for non-RAM:
+
+- The **I/O page** at `$CF00`–`$CFFF`. Reads and writes in this range go to memory-mapped registers on SYS (and through SYS to peripherals like the RTC, the ESP32-C3, and the SD card).
+- The **BIOS ROM** at `$D000`–`$FFFF`. 12 KB of contiguous boot code, copied at power-on from SYS's internal QSPI flash into a region of SRAM that's then write-protected by the chip-select decoder for the remainder of the boot.
+
+### Memory map summary
+
+The high-level layout of bank 0:
+
+| Range | Use |
+| --- | --- |
+| $0000–$00FF | Zero page (direct page; relocatable) |
+| $0080–$008F | CPU register scratch (used by the BRK debug handshake) |
+| $0100–$01FF | Hardware stack |
+| $0200–$0DFF | BIOS scratch and BDOS work area |
+| $0E00–$7EFF | TPA — Transient Program Area (user code) |
+| $7F00–$A6FF | CCP — Console Command Processor |
+| $A700–$CEFF | BDOS — Basic Disk Operating System |
+| $CF00–$CFFF | I/O page (memory-mapped registers) |
+| $D000–$FFFF | BIOS ROM (12 KB) |
+
+Banks `$01`–`$1F` are flat SRAM available to user programs through the 65C816's far addressing modes (`LDA $123456`, `JSL $112233`, etc.). The full breakdown — including every register in the `$CF00` page and a description of each — is in Appendix&nbsp;A: Memory Map.
+
+### The I/O page at $CF00
+
+The I/O page is a single 256-byte region in bank 0 mapped to SYS-side hardware registers. Reads and writes here are intercepted by the SYS PIO and routed to either internal registers or down to peripheral chips. The conventional sub-regions:
+
+| Range | Block |
+| --- | --- |
+| $CF00–$CF0F | System and interrupt status |
+| $CF10–$CF11 | UART data and status |
+| $CF28–$CF3F | FAT32 / SD card |
+| $CF30–$CF34 | Gamepad state |
+| $CF40–$CF47 | USB mouse |
+| $CF50–$CF57 | Real-time clock (BCD) |
+| $CF58–$CF67 | ESP32-C3 networking |
+| $CF68–$CF6C | PHI2 cycle counter |
+| $CF70–$CF72 | BRK debug handshake |
+| $CFE0 | PDI stream port (to PRISM) |
+
+:::note[Note · history]
+Earlier in the project the I/O base lived at `$E000`. The migration to `$CF00` happened in revision 2.2 to make room for a single contiguous BIOS ROM at `$D000–$FFFF` rather than the previous split layout. Older code referring to `$E0xx` addresses needs the bottom byte shifted: `$E010` → `$CF10`, `$E028` → `$CF28`, and so on.
+:::
+
+## Interrupts
+
+The 65C816 exposes two interrupt lines — the maskable `IRQ` and the non-maskable `NMI` — plus the `RESB` reset line. The native-mode vector table sits at the top of bank 0:
+
+| Vector | Address |
+| --- | --- |
+| COP (software trap) | $00:FFE4 |
+| BRK (debug) | $00:FFE6 |
+| ABORTB | $00:FFE8 |
+| NMI | $00:FFEA |
+| IRQ | $00:FFEE |
+
+All peripheral interrupts (RTC tick, USB mouse, gamepad edges, SD card ready, ESP32-C3 incoming packet, …) are aggregated by SYS and presented to the CPU as a single `IRQB` assertion on GP30. Software reads the IRQ status registers at `$CF00`–`$CF0F` to discover which source fired and to clear the latch.
+
+The `BRK` instruction is reserved for the debugger. When the CPU executes `BRK`, it pushes the program counter and status, then jumps through the vector at `$00:FFE6`. The handler stores the full register set into the scratch area at `$0080–$008F`, writes magic byte `0xCC` to `$CF70`, and spins waiting for SYS to write `0x01` to `$CF71`. The debug adapter on the host PC sees the magic byte, fetches the saved registers, optionally modifies them, then writes the resume value — and the CPU continues. See Chapter&nbsp;15 for the full debug protocol.
+
+`NMI` is reserved for the future VSYNC interrupt from PRISM. On Rev 2.1 the wire is present but the SYS pin is not — it's marked NC by design and the firmware does not arm it. Rev 3.0 routes it properly and Chapter&nbsp;11 covers raster effects that depend on it.
+
+## Reset and boot flow
+
+At power-on the SYS chip boots first, from its internal QSPI flash. It initialises its own PIO, configures the `PHI2` output, programs the chip-select decoder logic, and only then releases `RESB` on the CPU. The CPU fetches its reset vector from `$00:FFFC` and starts executing.
+
+On the first batch of Rev 2.1 boards there is a race here: the CPU's internal state takes a few hundred microseconds to fully settle after `RESB` goes high, and during that window the first one or two memory fetches can come back garbled. The firmware works around this with a **50-attempt retry-loop** that pre-drives the address bus to a known-good pattern, watches for the CPU to start fetching the expected reset-vector bytes, and only then steps back. In practice this takes one or two attempts and adds about a millisecond to boot. The race is permanently fixed in Rev 3.0 by routing the CPU `BE` (bus enable) pin to a SYS GPIO — SYS will be able to hold the CPU off the bus entirely until SYS itself is ready.
+
+Once the reset handshake completes, the BIOS ROM at `$D000` runs cold-boot, copies CCP and BDOS into their final locations, fingerprints the SD card, scans for firmware update files on the root, and finally hands control to the CCP, which prints the familiar prompt:
+
+```text
+HEX/OS 2.2  ·  Rev 2.1 board  ·  CPU 3.125 MHz  ·  2048 KB
+A>
+```
+
+From there the system is interactive.
+
+## Performance notes
+
+At the design-target `PHI2` of 12 MHz with one wait state above 6 MHz, the effective memory bandwidth is approximately 6 MHz × 1 byte = **6 MB/s**, less the cycles the CPU spends on internal work where the bus is idle. The 65C816's `VPA` and `VDA` signals identify those internal cycles; SYS can return PHI2 to the high phase early during them, recovering a measurable fraction of total clocks.
+
+None of this matches a modern CPU; none of this is meant to. The point of running a 65C816 at 12 MHz in 2026 is exactly that it is comprehensible. Every memory access goes through the latch and the decoder you can see on the schematic. Every interrupt has a wire you can probe. The next chapters build on this base.
