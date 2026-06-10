@@ -15,7 +15,8 @@ import starlight from "@astrojs/starlight";
 // ────────────────────────────────────────────────────────────────
 
 export default defineConfig({
-  site: "https://hex816.github.io/hex816-book/",
+ site: "https://hex816.github.io",
+  base: "/hex816-book",
   integrations: [
     starlight({
       title: "The HEX-816 Book",
