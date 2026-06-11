@@ -52,7 +52,7 @@ export default defineConfig({
             { label: "03 · Memory and storage", link: "/part-1/memory-and-storage/", badge: { text: "soon", variant: "note" } },
             { label: "04 · PRISM video", link: "/part-1/prism-video/", badge: { text: "soon", variant: "note" } },
             { label: "05 · Sound and audio", link: "/part-1/sound-and-audio/", badge: { text: "soon", variant: "note" } },
-            { label: "06 · I/O and peripherals", link: "/part-1/io-and-peripherals/", badge: { text: "soon", variant: "note" } },
+            { label: "06 · I/O and peripherals", link: "/part-1/io-and-peripherals/" },
             { label: "07 · Development and emulation", link: "/part-1/development-and-emulation/", badge: { text: "soon", variant: "note" } },
           ],
         },
