@@ -1,18 +1,95 @@
 ---
 title: "Chapter 3 · Memory and storage"
-description: "Placeholder — this chapter of The HEX-816 Book is not yet written."
+description: How the HEX-816's 2 MB of SRAM is organised and addressed, how the BIOS is staged into memory at boot, and how the SD card and FatFs provide mass storage.
 sidebar:
   label: 03 · Memory and storage
-  badge:
-    text: soon
-    variant: note
 ---
 
-:::note
-This chapter has not been written yet. It is a placeholder so the
-navigation and cross-links resolve. Content lands as the book grows.
+The HEX-816 has two tiers of storage: 2 MB of fast static RAM that the CPU
+addresses directly, and an SD card behind a filesystem for everything that has to
+survive a power cycle. This chapter covers how the RAM is wired and addressed, how
+the BIOS gets into memory at boot, and how the card is reached. The exact address
+boundaries are tabulated in Appendix&nbsp;A; here the focus is how it works.
+
+## Main memory
+
+Main memory is 2 MB of asynchronous SRAM in two **AS6C8008** packages of 1 MB
+each. They map as one contiguous block across banks `$00`–`$1F`: the first chip
+holds banks `$00`–`$0F` (`$00:0000`–`$0F:FFFF`) and the second holds banks
+`$10`–`$1F` (`$10:0000`–`$1F:FFFF`).
+
+Two pieces of logic place a chip on the bus. The **SN74AHC138** decoder watches
+the high bank bits and asserts the SRAM chip-select for the whole `$00`–`$1F`
+region, keeping it off the bus for any higher bank. Within that region, address
+bit `A20` picks the chip — `A20 = 0` selects the first 1 MB, `A20 = 1` the second.
+Each chip then resolves the remaining 20 address bits internally. None of this
+involves SYS: the decoder and the SRAM run with hardware timing, the chip drives
+or latches the bus on its own, and a normal memory cycle never enters firmware.
+That is exactly why the boot path is deterministic — the reset vector and all of
+the operating system come from real SRAM, not from anything SYS has to serve in
+real time.
+
+From a program's point of view the result is one flat 2 MB array. Bank 0 is where
+the OS and user programs run; banks `$01`–`$1F` are available to programs through
+the 65C816's far addressing modes (`LDA $123456`, `JSL $112233`), as covered in
+the programming chapters. The bank-0 layout — zero page, stack, the transient
+program area, CCP, BDOS, the I/O page, and the BIOS — is given in full in
+Appendix&nbsp;A.
+
+## The BIOS and boot staging
+
+The 12 KB of BIOS that runs the machine lives at `$D000`–`$FFFF` in bank&nbsp;0,
+but there is no ROM chip there — that range is ordinary SRAM. The BIOS image is
+kept in **SYS**'s own QSPI flash, and getting it into bank-0 SRAM before the CPU
+starts is a small dance.
+
+At power-on SYS comes up first. It initialises its bus interface, then preloads:
+while holding the CPU off the bus, it writes the BIOS image into the `$D000`–`$FFFF`
+SRAM region. It also stands ready to *serve* that range — for the brief window
+before the copy is trusted, a read of `$D000`–`$FFFF` (or the reset-vector pull at
+the top of the bank) is answered by SYS from the flash image rather than from
+SRAM. SYS then releases the CPU, which begins executing the BIOS cold-boot code.
+
+Once the BIOS has settled — having copied CCP and BDOS into place and confirmed
+the image — it writes `$A5` to `BOOT_STAGE_FLAG` at `$CF7F`. That is a one-way
+latch: from then on SYS stops serving the `$D000`–`$FFFF` mirror, and subsequent
+reads fall through to the SRAM copy, which is byte-identical to what was served.
+The same image is also visible through the high ROM window at `$F0:0000`–`$FF:FFFF`,
+which SYS serves for the life of the session.
+
+:::note[Note · bring-up]
+Holding the CPU off the bus during preload needs the CPU's `BE` line under SYS
+control. On Rev&nbsp;2.1 that line is bodged onto `GP32` (Chapter&nbsp;6);
+Rev&nbsp;3.0 gives it a dedicated pin.
 :::
 
-If you want to help write it, the source lives in the
-[hex816-book](https://github.com/hex816/hex816-book) repository —
-hit **Edit** in the top-right of any page.
+## Mass storage — the SD card
+
+Persistent storage is an SD card on SYS's **SPI** bus, with its chip-select on
+`GP35`. SYS runs a **FatFs** filesystem (the ChaN implementation) on the card and
+presents it to the CPU as a register-based command interface in the I/O page,
+rather than exposing raw sectors. The CPU never sees FAT tables or SPI commands;
+it issues filesystem calls.
+
+A program drives storage by writing a command code to `SD_CMD` at `$CF20` and
+exchanging arguments through the `$CF28`–`$CF39` register file: a file handle, a
+path-string buffer, a 32-bit file position, and read-back registers for a file's
+attributes, size, name, and date. The command set is what a CP/M-style OS needs —
+open (for read, read-write, or create), close, seek, report position, stat, search
+a directory (first/next), make a directory, delete, rename, and flush. File data
+moves 128 bytes at a time — the CP/M record size — through the `SD_DATA` stream
+port at `$CF25`: after a read command, successive reads of `$CF25` stream the
+record out a byte at a time.
+
+:::caution
+The byte-streaming *write* path is not complete on the current firmware. The
+`READ128` direction works, but writes to `SD_DATA` (`$CF25`) are not routed to the
+filesystem handler, so `WRITE128` never receives its bytes — saving a file does
+not yet work. `SD_STATUS` (`$CF26`) is also unimplemented and reads `$FF`. Both
+are recorded as firmware decode issues in Appendix&nbsp;A.
+:::
+
+The card can additionally be presented to a host PC as USB mass storage; SYS
+tracks insertion and removal through the removable-media registers at
+`$CF3A`–`$CF3B` and remounts FatFs when the medium changes. The register details
+are in Chapter&nbsp;6 and Appendix&nbsp;A.

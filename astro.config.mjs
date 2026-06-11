@@ -49,7 +49,7 @@ export default defineConfig({
           items: [
             { label: "01 · Introduction", link: "/part-1/introduction/", badge: { text: "soon", variant: "note" } },
             { label: "02 · System architecture", link: "/part-1/system-architecture/" },
-            { label: "03 · Memory and storage", link: "/part-1/memory-and-storage/", badge: { text: "soon", variant: "note" } },
+            { label: "03 · Memory and storage", link: "/part-1/memory-and-storage/" },
             { label: "04 · PRISM video", link: "/part-1/prism-video/", badge: { text: "soon", variant: "note" } },
             { label: "05 · Sound and audio", link: "/part-1/sound-and-audio/", badge: { text: "soon", variant: "note" } },
             { label: "06 · I/O and peripherals", link: "/part-1/io-and-peripherals/" },
