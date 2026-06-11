@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import remarkGfm from "remark-gfm";
 
 // ────────────────────────────────────────────────────────────────
 //  Hosting note
@@ -13,6 +14,12 @@ import starlight from "@astrojs/starlight";
 
 export default defineConfig({
  site: "https://hex816.github.io",
+  // Astro's built-in GFM is not inherited by the MDX integration, so add
+  // remark-gfm explicitly here — this is what makes Markdown tables (and the
+  // rest of GFM) render in the .mdx chapters.
+  markdown: {
+    remarkPlugins: [remarkGfm],
+  },
   integrations: [
     starlight({
       title: "The HEX-816 Book",
