@@ -13,7 +13,7 @@ import remarkGfm from "remark-gfm";
 // ────────────────────────────────────────────────────────────────
 
 export default defineConfig({
- site: "https://hex816.github.io",
+  site: "https://hex816.github.io",
   // Astro's built-in GFM is not inherited by the MDX integration, so add
   // remark-gfm explicitly here — this is what makes Markdown tables (and the
   // rest of GFM) render in the .mdx chapters.
