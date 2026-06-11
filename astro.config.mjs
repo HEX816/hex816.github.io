@@ -5,18 +5,14 @@ import starlight from "@astrojs/starlight";
 // ────────────────────────────────────────────────────────────────
 //  Hosting note
 //  ----------------------------------------------------------------
-//  `site` / `base` are filled in once you pick where the book lives:
-//    • Subdomain (docs.hex816.com): site: "https://docs.hex816.com"
-//    • Subdirectory (hex816.com/book): site: "https://hex816.com",
-//                                       base: "/book"
-//    • GitHub Pages project site:      site: "https://hex816.github.io",
-//                                       base: "/hex816-book"
-//  Leaving them as-is works for local dev and a root-domain deploy.
+//  Deployed as the org ROOT site: the repo is named `hex816.github.io`,
+//  so GitHub Pages serves it at https://hex816.github.io/ with no base
+//  path. To move it to a custom domain instead, set `site` to that
+//  domain (e.g. "https://docs.hex816.com") and add a public/CNAME file.
 // ────────────────────────────────────────────────────────────────
 
 export default defineConfig({
  site: "https://hex816.github.io",
-  base: "/hex816-book",
   integrations: [
     starlight({
       title: "The HEX-816 Book",
@@ -36,7 +32,7 @@ export default defineConfig({
         },
       ],
       editLink: {
-        baseUrl: "https://github.com/hex816/hex816-book/edit/main/",
+        baseUrl: "https://github.com/HEX816/hex816.github.io/edit/main/",
       },
       customCss: ["./src/styles/theme.css"],
       lastUpdated: true,
