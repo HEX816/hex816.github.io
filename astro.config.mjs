@@ -74,7 +74,7 @@ export default defineConfig({
         {
           label: "Appendices",
           items: [
-            { label: "A · Memory map", link: "/appendices/memory-map/", badge: { text: "soon", variant: "note" } },
+            { label: "A · Memory map", link: "/appendices/memory-map/" },
             { label: "B · Glossary", link: "/appendices/glossary/", badge: { text: "soon", variant: "note" } },
             { label: "C · 6502 → 65C816", link: "/appendices/6502-to-65c816/", badge: { text: "soon", variant: "note" } },
             { label: "D · vs classic 8-bits", link: "/appendices/vs-classic-8bits/", badge: { text: "soon", variant: "note" } },

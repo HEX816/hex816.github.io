@@ -1,18 +1,149 @@
 ---
 title: "Appendix A · Memory map"
-description: "Placeholder — this chapter of The HEX-816 Book is not yet written."
+description: The complete HEX-816 address map — the 24-bit bank layout, the CP/M bank-0 layout, and every register in the $CF00 I/O page, transcribed from the firmware decode.
 sidebar:
   label: A · Memory map
-  badge:
-    text: soon
-    variant: note
 ---
 
+This appendix is the authoritative address reference for the HEX-816. Every
+figure here is transcribed from the **SYS** firmware bus decode (`sys_main.c`)
+and the I/O-register map it implements; where the firmware and any narrative
+chapter disagree, the firmware is correct. Chapter&nbsp;2 cites this appendix for
+the full breakdown.
+
+## The 24-bit address space
+
+The **W65C816S** addresses 16&nbsp;MB through a 24-bit address: a 16-bit address
+within a bank (`A0–A15`) plus an 8-bit bank number (`A16–A23`). On the HEX-816
+only three regions of that space are populated; everything else reads open bus
+(`$FF`).
+
+| Range | Size | Contents |
+| --- | --- | --- |
+| `$00:0000`–`$0F:FFFF` | 1 MB | Base SRAM (banks `$00`–`$0F`) |
+| `$10:0000`–`$1F:FFFF` | 1 MB | Expansion SRAM (banks `$10`–`$1F`) |
+| `$20:0000`–`$EF:FFFF` | — | Unpopulated (open bus) |
+| `$F0:0000`–`$FF:FFFF` | 1 MB window | BIOS ROM image, served by SYS |
+
+Main memory is 2 MB of asynchronous SRAM in two **AS6C8008** packages, 1 MB each
+— the first at banks `$00`–`$0F`, the second at banks `$10`–`$1F`. SYS does not
+sit in the path of normal SRAM cycles: the **SN74AHC138** decoder asserts the
+SRAM chip-selects directly from the latched bank bits, and the SRAM drives or
+latches the bus with hardware timing. SYS only intercepts the two regions it
+must — the bank-0 I/O page and, during boot, the BIOS window (see
+Chapter&nbsp;3 for the storage and boot detail).
+
+{/* TODO: unverified — chip reference designators for the two SRAMs differ
+between sources (firmware comments + PIO_SERVE_DESIGN.md say U2/U3; Chapter 2
+prose says U7/U8). Confirm against the schematic before asserting U-numbers. */}
+
+The `$F0:0000`–`$FF:FFFF` ROM window has no physical ROM chip: SYS serves those
+reads from a 12 KB image held in its own QSPI flash, and the same image is
+staged into bank-0 SRAM at `$D000`–`$FFFF` at boot.
+
 :::note
-This chapter has not been written yet. It is a placeholder so the
-navigation and cross-links resolve. Content lands as the book grows.
+The 65C816 fetches its reset and interrupt vectors from the top of **bank&nbsp;0**
+(`$00:FFE4`–`$00:FFFF`), not from the high ROM window. At boot those vectors live
+in the bank-0 BIOS copy at `$D000`–`$FFFF`.
 :::
 
-If you want to help write it, the source lives in the
-[hex816-book](https://github.com/hex816/hex816-book) repository —
-hit **Edit** in the top-right of any page.
+## Bank-0 layout
+
+Bank 0 is where the CPU runs: zero page, the stack, the HEX/OS operating system,
+the I/O page, and the BIOS all live here. The layout follows the CP/M-style model
+HEX/OS uses.
+
+| Range | Use |
+| --- | --- |
+| `$0000`–`$00FF` | Zero page (direct page; relocatable via the `D` register) |
+| `$0080`–`$008F` | CPU register scratch — used by the BRK debug handshake |
+| `$0100`–`$01FF` | Hardware stack |
+| `$0200`–`$0DFF` | BIOS scratch and BDOS work area |
+| `$0E00`–`$7EFF` | TPA — Transient Program Area (user code) |
+| `$7F00`–`$A6FF` | CCP — Console Command Processor |
+| `$A700`–`$CEFF` | BDOS — Basic Disk Operating System |
+| `$CF00`–`$CFFF` | I/O page (memory-mapped registers) |
+| `$D000`–`$FFFF` | BIOS ROM (12 KB, staged into SRAM at boot) |
+
+The register-save area at `$0080`–`$008F` is reserved BIOS workspace; the BRK
+handler stores the user program's registers there for the debugger
+(Chapter&nbsp;15). The `$0080`–`$008F` range overlaps the zero page by design.
+
+## The $CF00 I/O page
+
+The I/O page is a single 256-byte region in bank&nbsp;0. SYS decodes the address
+range `$00:CF00`–`$00:CFFF` and routes reads and writes either to its own
+registers or, over **SPI** / **QSPI**, to the **SND** and **VID** coprocessors
+and the peripheral chips. A register's address is `$CF00` plus its page offset.
+Offsets not listed here are unmapped: reads return `$FF` and writes are ignored.
+
+| Address | Name | R/W | Function |
+| --- | --- | --- | --- |
+| `$CF00` | `SYS_STATUS` | R | System status (returns `$01`) |
+| `$CF03`–`$CF04` | `TIMER_LO/HI` | R | 60 Hz tick counter, low and high byte |
+| `$CF05`–`$CF06` | `KBD_DATA/STATUS` | R | USB keyboard byte and byte-available flag |
+| `$CF09` | `RESET_CTRL` | W | Write `$42` to pulse `RESB` (reset the CPU) |
+| `$CF0A` | `LED` | W | Status LED (currently a no-op; the board LED is on SND) |
+| `$CF10`–`$CF11` | `UART_DATA/STATUS` | R/W | Console UART, relayed to SND CDC1 over USB |
+| `$CF20` | `SD_CMD` | W | SD/FAT command dispatch (value ≥ `$10`) |
+| `$CF25` | `SD_DATA` | R | SD 128-byte data stream (see caution below) |
+| `$CF26` | `SD_STATUS` | R | SD status (see caution below) |
+| `$CF28`–`$CF39` | `FAT_*` | R/W | FatFs register file (handle, path, position, attributes, size, name, date, sync, mount) |
+| `$CF3A`–`$CF3B` | `MSC_STATE/CTRL` | R/W | Removable-media (USB mass-storage) status and control |
+| `$CF50`–`$CF57` | `RTC_*` | R/W | Real-time clock — seconds…year (BCD) and control |
+| `$CF58`–`$CF67` | `NET_*` | R/W | ESP32-C3 networking registers |
+| `$CF70`–`$CF72` | `DBG_*` | R/W | BRK debug handshake (see below) |
+| `$CF7F` | `BOOT_STAGE_FLAG` | W | Write `$A5` to end boot-staging of the `$F000`–`$FFFF` mirror |
+| `$CFA0`–`$CFBF` | `SND_REGS` | W | SND register window, forwarded over SPI |
+| `$CFE0` | `PDI` | W | PRISM Display Interface — one command byte to VID over QSPI |
+
+### Debug handshake
+
+The three registers at `$CF70`–`$CF72` carry the cooperative BRK handshake
+between the CPU-side BIOS handler and SYS:
+
+| Address | Direction | Purpose |
+| --- | --- | --- |
+| `$CF70` | CPU → SYS (W) | BRK magic — the handler writes `$CC` once it has parked and saved registers |
+| `$CF71` | SYS → CPU (R) | Resume code: `$00` wait, `$01` continue, `$02` step, `$03` reset |
+| `$CF72` | SYS → CPU (R) | Status: bit&nbsp;0 = debug session active, bit&nbsp;1 = CPU halted |
+
+The full protocol is in Chapter&nbsp;15.
+
+### Known gaps in the current map
+
+The I/O decode is still settling in a few places. These are real, current
+limitations — not rounding in this table:
+
+:::caution[I/O map — open issues]
+- **`$CF25` SD_DATA writes are dropped.** Reads (the SD `READ128` path) work, but
+  the firmware does not route writes to `$CF25` into the FAT handler, so the
+  `WRITE128` save path cannot deliver its bytes. SD file *save* does not work
+  until this is fixed in firmware.
+- **`$CF26` SD_STATUS is unimplemented.** The address decodes but has no handler,
+  so it always reads `$FF`.
+- **`$CFA0`–`$CFBF` SND window is narrow.** SYS forwards only this 32-byte window
+  to SND, which covers SPI registers `$00`–`$1F` — narrower than the SND audio
+  register range documented for the PSG/PCM mixer.
+- **`$CFE0` PDI overlaps the SND high registers.** The PRISM command port at
+  `$CFE0` sits where the PCM sample-pool registers would extend; the two have not
+  been reconciled.
+:::
+
+## Interrupt and reset vectors
+
+Native-mode vectors sit at the top of bank&nbsp;0:
+
+| Vector | Address |
+| --- | --- |
+| COP (software trap) | `$00:FFE4` |
+| BRK (debug) | `$00:FFE6` |
+| ABORTB | `$00:FFE8` |
+| NMI | `$00:FFEA` |
+| IRQ | `$00:FFEE` |
+| RESET | `$00:FFFC` |
+
+SYS aggregates every peripheral interrupt source and presents them to the CPU as
+a single `IRQB` assertion; `NMI` is reserved for the future PRISM VSYNC interrupt
+and is not wired on Rev&nbsp;2.1 (Chapter&nbsp;11). The I/O interface and each
+peripheral block are described in Chapter&nbsp;6.
