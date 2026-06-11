@@ -20,10 +20,10 @@ only three regions of that space are populated; everything else reads open bus
 
 | Range | Size | Contents |
 | --- | --- | --- |
-| `$00:0000`–`$0F:FFFF` | 1 MB | Base SRAM (banks `$00`–`$0F`) |
-| `$10:0000`–`$1F:FFFF` | 1 MB | Expansion SRAM (banks `$10`–`$1F`) |
-| `$20:0000`–`$EF:FFFF` | — | Unpopulated (open bus) |
-| `$F0:0000`–`$FF:FFFF` | 1 MB window | BIOS ROM image, served by SYS |
+| $00:0000–$0F:FFFF | 1 MB | Base SRAM (banks $00–$0F) |
+| $10:0000–$1F:FFFF | 1 MB | Expansion SRAM (banks $10–$1F) |
+| $20:0000–$EF:FFFF | — | Unpopulated (open bus) |
+| $F0:0000–$FF:FFFF | 1 MB window | BIOS ROM image, served by SYS |
 
 Main memory is 2 MB of asynchronous SRAM in two **AS6C8008** packages, 1 MB each
 — the first at banks `$00`–`$0F`, the second at banks `$10`–`$1F`. SYS does not
@@ -55,15 +55,15 @@ HEX/OS uses.
 
 | Range | Use |
 | --- | --- |
-| `$0000`–`$00FF` | Zero page (direct page; relocatable via the `D` register) |
-| `$0080`–`$008F` | CPU register scratch — used by the BRK debug handshake |
-| `$0100`–`$01FF` | Hardware stack |
-| `$0200`–`$0DFF` | BIOS scratch and BDOS work area |
-| `$0E00`–`$7EFF` | TPA — Transient Program Area (user code) |
-| `$7F00`–`$A6FF` | CCP — Console Command Processor |
-| `$A700`–`$CEFF` | BDOS — Basic Disk Operating System |
-| `$CF00`–`$CFFF` | I/O page (memory-mapped registers) |
-| `$D000`–`$FFFF` | BIOS ROM (12 KB, staged into SRAM at boot) |
+| $0000–$00FF | Zero page (direct page; relocatable via the `D` register) |
+| $0080–$008F | CPU register scratch — used by the BRK debug handshake |
+| $0100–$01FF | Hardware stack |
+| $0200–$0DFF | BIOS scratch and BDOS work area |
+| $0E00–$7EFF | TPA — Transient Program Area (user code) |
+| $7F00–$A6FF | CCP — Console Command Processor |
+| $A700–$CEFF | BDOS — Basic Disk Operating System |
+| $CF00–$CFFF | I/O page (memory-mapped registers) |
+| $D000–$FFFF | BIOS ROM (12 KB, staged into SRAM at boot) |
 
 The register-save area at `$0080`–`$008F` is reserved BIOS workspace; the BRK
 handler stores the user program's registers there for the debugger
@@ -79,23 +79,23 @@ Offsets not listed here are unmapped: reads return `$FF` and writes are ignored.
 
 | Address | Name | R/W | Function |
 | --- | --- | --- | --- |
-| `$CF00` | `SYS_STATUS` | R | System status (returns `$01`) |
-| `$CF03`–`$CF04` | `TIMER_LO/HI` | R | 60 Hz tick counter, low and high byte |
-| `$CF05`–`$CF06` | `KBD_DATA/STATUS` | R | USB keyboard byte and byte-available flag |
-| `$CF09` | `RESET_CTRL` | W | Write `$42` to pulse `RESB` (reset the CPU) |
-| `$CF0A` | `LED` | W | Status LED (currently a no-op; the board LED is on SND) |
-| `$CF10`–`$CF11` | `UART_DATA/STATUS` | R/W | Console UART, relayed to SND CDC1 over USB |
-| `$CF20` | `SD_CMD` | W | SD/FAT command dispatch (value ≥ `$10`) |
-| `$CF25` | `SD_DATA` | R | SD 128-byte data stream (see caution below) |
-| `$CF26` | `SD_STATUS` | R | SD status (see caution below) |
-| `$CF28`–`$CF39` | `FAT_*` | R/W | FatFs register file (handle, path, position, attributes, size, name, date, sync, mount) |
-| `$CF3A`–`$CF3B` | `MSC_STATE/CTRL` | R/W | Removable-media (USB mass-storage) status and control |
-| `$CF50`–`$CF57` | `RTC_*` | R/W | Real-time clock — seconds…year (BCD) and control |
-| `$CF58`–`$CF67` | `NET_*` | R/W | ESP32-C3 networking registers |
-| `$CF70`–`$CF72` | `DBG_*` | R/W | BRK debug handshake (see below) |
-| `$CF7F` | `BOOT_STAGE_FLAG` | W | Write `$A5` to end boot-staging of the `$F000`–`$FFFF` mirror |
-| `$CFA0`–`$CFBF` | `SND_REGS` | W | SND register window, forwarded over SPI |
-| `$CFE0` | `PDI` | W | PRISM Display Interface — one command byte to VID over QSPI |
+| $CF00 | `SYS_STATUS` | R | System status (returns `$01`) |
+| $CF03–$CF04 | `TIMER_LO/HI` | R | 60 Hz tick counter, low and high byte |
+| $CF05–$CF06 | `KBD_DATA/STATUS` | R | USB keyboard byte and byte-available flag |
+| $CF09 | `RESET_CTRL` | W | Write `$42` to pulse `RESB` (reset the CPU) |
+| $CF0A | `LED` | W | Status LED (currently a no-op; the board LED is on SND) |
+| $CF10–$CF11 | `UART_DATA/STATUS` | R/W | Console UART, relayed to SND CDC1 over USB |
+| $CF20 | `SD_CMD` | W | SD/FAT command dispatch (value ≥ `$10`) |
+| $CF25 | `SD_DATA` | R | SD 128-byte data stream (see caution below) |
+| $CF26 | `SD_STATUS` | R | SD status (see caution below) |
+| $CF28–$CF39 | `FAT_*` | R/W | FatFs register file (handle, path, position, attributes, size, name, date, sync, mount) |
+| $CF3A–$CF3B | `MSC_STATE/CTRL` | R/W | Removable-media (USB mass-storage) status and control |
+| $CF50–$CF57 | `RTC_*` | R/W | Real-time clock — seconds…year (BCD) and control |
+| $CF58–$CF67 | `NET_*` | R/W | ESP32-C3 networking registers |
+| $CF70–$CF72 | `DBG_*` | R/W | BRK debug handshake (see below) |
+| $CF7F | `BOOT_STAGE_FLAG` | W | Write `$A5` to end boot-staging of the $F000–$FFFF mirror |
+| $CFA0–$CFBF | `SND_REGS` | W | SND register window, forwarded over SPI |
+| $CFE0 | `PDI` | W | PRISM Display Interface — one command byte to VID over QSPI |
 
 ### Debug handshake
 
@@ -104,9 +104,9 @@ between the CPU-side BIOS handler and SYS:
 
 | Address | Direction | Purpose |
 | --- | --- | --- |
-| `$CF70` | CPU → SYS (W) | BRK magic — the handler writes `$CC` once it has parked and saved registers |
-| `$CF71` | SYS → CPU (R) | Resume code: `$00` wait, `$01` continue, `$02` step, `$03` reset |
-| `$CF72` | SYS → CPU (R) | Status: bit&nbsp;0 = debug session active, bit&nbsp;1 = CPU halted |
+| $CF70 | CPU → SYS (W) | BRK magic — the handler writes `$CC` once it has parked and saved registers |
+| $CF71 | SYS → CPU (R) | Resume code: `$00` wait, `$01` continue, `$02` step, `$03` reset |
+| $CF72 | SYS → CPU (R) | Status: bit&nbsp;0 = debug session active, bit&nbsp;1 = CPU halted |
 
 The full protocol is in Chapter&nbsp;15.
 
@@ -136,12 +136,12 @@ Native-mode vectors sit at the top of bank&nbsp;0:
 
 | Vector | Address |
 | --- | --- |
-| COP (software trap) | `$00:FFE4` |
-| BRK (debug) | `$00:FFE6` |
-| ABORTB | `$00:FFE8` |
-| NMI | `$00:FFEA` |
-| IRQ | `$00:FFEE` |
-| RESET | `$00:FFFC` |
+| COP (software trap) | $00:FFE4 |
+| BRK (debug) | $00:FFE6 |
+| ABORTB | $00:FFE8 |
+| NMI | $00:FFEA |
+| IRQ | $00:FFEE |
+| RESET | $00:FFFC |
 
 SYS aggregates every peripheral interrupt source and presents them to the CPU as
 a single `IRQB` assertion; `NMI` is reserved for the future PRISM VSYNC interrupt
