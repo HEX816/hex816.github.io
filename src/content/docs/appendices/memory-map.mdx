@@ -26,16 +26,14 @@ only three regions of that space are populated; everything else reads open bus
 | $F0:0000–$FF:FFFF | 1 MB window | BIOS ROM image, served by SYS |
 
 Main memory is 2 MB of asynchronous SRAM in two **AS6C8008** packages, 1 MB each
-— the first at banks `$00`–`$0F`, the second at banks `$10`–`$1F`. SYS does not
+— **U2** at banks `$00`–`$0F` and **U3** at banks `$10`–`$1F`, with address bit
+`A20` selecting between them. **On Rev 2.1 only U2 is populated** (U3 is DNP), so a
+Rev 2.1 board has 1 MB; the table above shows the full 2 MB design. SYS does not
 sit in the path of normal SRAM cycles: the **SN74AHC138** decoder asserts the
 SRAM chip-selects directly from the latched bank bits, and the SRAM drives or
 latches the bus with hardware timing. SYS only intercepts the two regions it
 must — the bank-0 I/O page and, during boot, the BIOS window (see
 Chapter&nbsp;3 for the storage and boot detail).
-
-{/* TODO: unverified — chip reference designators for the two SRAMs differ
-between sources (firmware comments + PIO_SERVE_DESIGN.md say U2/U3; Chapter 2
-prose says U7/U8). Confirm against the schematic before asserting U-numbers. */}
 
 The `$F0:0000`–`$FF:FFFF` ROM window has no physical ROM chip: SYS serves those
 reads from a 12 KB image held in its own QSPI flash, and the same image is

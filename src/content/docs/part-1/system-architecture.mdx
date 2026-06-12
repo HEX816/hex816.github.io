@@ -14,7 +14,7 @@ The W65C816S is a 16-bit successor to the 6502. WDC introduced it in 1985 and st
 The HEX-816 firmware switches the CPU into native mode at reset and never goes back. Emulation mode is technically still in the instruction set (`XCE` swaps the two), but it is not used or supported. All toolchain, all OS code, and all example programs in this book assume native mode throughout.
 
 :::note[Note · bring-up]
-On Rev 2.1 the CPU is currently running at **3.125 MHz** for bring-up purposes, not the 12 MHz design target. A reset-vector race during the first millisecond of power-on currently requires a software boot-dance to get past; the workaround works, but it limits how aggressively `PHI2` can be ramped during the same window. Rev 3.0 will route the CPU's `BE` pin to a SYS GPIO and eliminate the race entirely. Until then, code in this book that references "12 MHz" is correct for the target design, with the bring-up caveat applying for the first batch of boards.
+On Rev 2.1 the CPU is currently running at **3.125 MHz** for bring-up purposes, not the 12 MHz design target. A reset-vector race during the first millisecond of power-on currently requires a software boot-dance to get past; the workaround works, but it limits how aggressively `PHI2` can be ramped during the same window. Rev 2.2 routes the CPU's `BE` pin to a SYS GPIO and eliminates the race entirely. Until then, code in this book that references "12 MHz" is correct for the target design, with the bring-up caveat applying for the first batch of boards.
 :::
 
 ## The three coprocessors
@@ -48,7 +48,7 @@ Above 6 MHz the AS6C8008 SRAM's data-setup time relative to the rising edge of `
 
 ## Memory organisation
 
-Main memory is **2 MB of asynchronous SRAM** in two AS6C8008 packages, each 1 MB. The high address bit `A20` selects between them: `A20=0` drives `/CE` on U7 and `A20=1` drives `/CE` on U8. From the CPU's point of view the result is one contiguous flat block of memory occupying banks `$00`–`$1F`.
+Main memory is **2 MB of asynchronous SRAM** in two **AS6C8008** packages, each 1 MB — **U2** (banks `$00`–`$0F`) and **U3** (banks `$10`–`$1F`). The high address bit `A20` selects between them via each chip's `CE2`: `A20=0` selects U2, `A20=1` selects U3. From the CPU's point of view the result is one contiguous flat block occupying banks `$00`–`$1F`. On Rev 2.1 boards only U2 is populated (U3 is DNP), so a Rev 2.1 unit has 1 MB; the full 2 MB is the design intent.
 
 Inside bank 0, two regions are reserved for non-RAM:
 
@@ -117,7 +117,7 @@ All peripheral interrupts (RTC tick, USB keyboard input, SD card ready, ESP32-C3
 
 The `BRK` instruction is reserved for the debugger. When the CPU executes `BRK`, it pushes the program counter and status, then jumps through the vector at `$00:FFE6`. The handler stores the full register set into the scratch area at `$0080–$008F`, writes magic byte `0xCC` to `$CF70`, and spins waiting for SYS to write `0x01` to `$CF71`. The debug adapter on the host PC sees the magic byte, fetches the saved registers, optionally modifies them, then writes the resume value — and the CPU continues. See Chapter&nbsp;15 for the full debug protocol.
 
-`NMI` is reserved for the future VSYNC interrupt from PRISM. On Rev 2.1 the wire is present but the SYS pin is not — it's marked NC by design and the firmware does not arm it. Rev 3.0 routes it properly and Chapter&nbsp;11 covers raster effects that depend on it.
+`NMI` is reserved for the VSYNC interrupt from PRISM. On Rev 2.1 there is no dedicated VID→SYS vsync wire, so vsync is delivered to SYS over the SPI control plane rather than as a hardware interrupt. Rev 2.2 wires VID's vsync output to a SYS GPIO, making it a true low-latency interrupt; Chapter&nbsp;11 covers the raster effects that depend on it.
 
 ## Reset and boot flow
 

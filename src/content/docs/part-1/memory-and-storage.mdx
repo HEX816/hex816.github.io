@@ -14,9 +14,10 @@ boundaries are tabulated in Appendix&nbsp;A; here the focus is how it works.
 ## Main memory
 
 Main memory is 2 MB of asynchronous SRAM in two **AS6C8008** packages of 1 MB
-each. They map as one contiguous block across banks `$00`–`$1F`: the first chip
-holds banks `$00`–`$0F` (`$00:0000`–`$0F:FFFF`) and the second holds banks
-`$10`–`$1F` (`$10:0000`–`$1F:FFFF`).
+each — **U2** and **U3**. They map as one contiguous block across banks `$00`–`$1F`:
+U2 holds banks `$00`–`$0F` (`$00:0000`–`$0F:FFFF`) and U3 holds banks `$10`–`$1F`
+(`$10:0000`–`$1F:FFFF`). On Rev 2.1 boards only U2 is populated (U3 is DNP), so a
+Rev 2.1 unit has 1 MB; the full 2 MB is the design intent.
 
 Two pieces of logic place a chip on the bus. The **SN74AHC138** decoder watches
 the high bank bits and asserts the SRAM chip-select for the whole `$00`–`$1F`

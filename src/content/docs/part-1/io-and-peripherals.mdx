@@ -45,7 +45,7 @@ complete map:
 | `GP33` | `Y7_FB` | in | `74AHC138` `Y7` feedback (high-bank hint) |
 | `GP34` | `CS_VID_SPI` | out | VID SPI slave-select (firmware-update path) |
 | `GP35` | `SD_CS` | out | SD card SPI chip-select |
-| `GP36` | `RUN_VID_CTRL` | out | VID run/reset control |
+| `GP36` | `RUN_ALL` | out | Open-drain panic-reset for all three RP2354Bs |
 | `GP37` | `QSPI_SCK` | out | QSPI clock to VID |
 | `GP38`–`GP41` | `QSPI_D0`–`D3` | out | QSPI data to VID (PRISM command stream) |
 | `GP42` | `SPI_SCK` | out | SPI clock (SND, and VID extended) |
@@ -59,7 +59,8 @@ complete map:
 `GP32` is the RTC chip-enable in the production design, but on Rev&nbsp;2.1 it is
 bodged to the CPU's `BE` (bus-enable) line so SYS can hold the CPU off the bus
 while it preloads the BIOS at boot. The RTC chip-enable is sacrificed for that
-window. Rev&nbsp;3.0 routes `BE` to its own pin and returns `GP32` to the RTC.
+window. Rev&nbsp;2.2 makes this permanent — `BE` gets `GP32` for good, and the RTC
+moves to the SND coprocessor (which frees `GP32`, `GP46`, and `GP47` on SYS).
 :::
 
 ### Serving an I/O access
@@ -90,6 +91,12 @@ SYS is also the USB **host**. Through an **FE1.1S** hub it enumerates a USB
 keyboard, whose keystrokes appear at `KBD_DATA` (`$CF05`) with a ready flag at
 `KBD_STATUS` (`$CF06`), and the **ESP32-C3** networking module (below). A pressed
 key also raises `IRQB` so the OS need not poll.
+
+The hardware design also reserves I/O blocks for a **USB mouse** (`$CF40`–`$CF47`)
+and **USB / DB9 gamepads** (`$CF48`–`$CF4F`, exposing C64/Atari, Kempston, and Mega
+Drive byte layouts so retro ports read a familiar register). These are a planned
+firmware feature — gamepad support targets firmware 1.0 — and are **not decoded by
+the current firmware**; only the keyboard path above is live today.
 
 ## Storage — SD card and FAT
 
@@ -163,6 +170,7 @@ SYS owns both CPU interrupt lines. Every peripheral source — the 60&nbsp;Hz ti
 tick at `$CF03`–`$CF04`, keyboard input, SD-card-ready, an incoming network packet
 — is aggregated by SYS and delivered to the CPU as a single `IRQB` assertion on
 `GP30`; the interrupt handler then queries SYS to learn which source fired. The
-`NMI` line (`GP31`) is reserved for the PRISM VSYNC interrupt; on Rev&nbsp;2.1 it
-is not wired, and the raster effects that depend on it are described in
-Chapter&nbsp;11.
+`NMI` line (`GP31`) is reserved for the PRISM VSYNC interrupt. On Rev&nbsp;2.1 there
+is no dedicated VID→SYS vsync wire (vsync arrives over the SPI control plane);
+Rev&nbsp;2.2 wires it to a SYS GPIO as a true interrupt. The raster effects that
+depend on it are described in Chapter&nbsp;11.
